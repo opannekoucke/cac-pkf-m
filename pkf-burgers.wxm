@@ -1,0 +1,462 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 19.07.0 ] */
+/* [wxMaxima: title   start ]
+PKF dynamics : the diffusion part of the Burgers' equation
+   [wxMaxima: title   end   ] */
+
+
+/* [wxMaxima: comment start ]
+This notebook is a part of the preliminary symbolic computation in Maxima, of the parametric Kalman filter (PKF) dynamics applied to the Burgers' equation detailed in Pannekoucke et al. (2018). The motivation is to validate the calculation done by hand, and start to think about a systematic derivation of the PKF equations. This notebook relies on the compagnion library `./lib/libpkf.mc` which implements the expectation operator used to facilitate the calculations.
+
+** Warning: the notebook and the associated library `lib/libpkf.mc` are provided as they are, and may contains some errors compared with Pannekoucke et al. (2018). This work is only a preliminary attempt to the symbolic computation of the PKF dynamics **
+
+O. Pannekoucke, M. Bocquet, and R. Ménard, “Parametric covariance dynamics for the nonlinear diffusive Burgers’ equation,” Nonlinear Processes in Geophysics, vol. 2018, pp. 1–21, 2018, doi: https://doi.org/10.5194/npg-2018-10.
+   [wxMaxima: comment end   ] */
+
+
+/* [wxMaxima: section start ]
+Definition of variables and load the library
+   [wxMaxima: section end   ] */
+
+
+/* [wxMaxima: input   start ] */
+kill(all)$
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  Declaration */
+    /*  Random function */
+depends([e,ε],[x,y,i,j,k,l,t,ω])$
+    /*  Deterministic function */
+depends([σ,V,g,ν],[x,y,i,j,k,l,t])$
+coords:[x,y,i,j,k,l];
+dependencies;  
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+load("./lib/libpkf.mc");
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: section start ]
+Rules for simplifications
+   [wxMaxima: section end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 1: E(ε**2)=1 et E(ε*diff(ε,xi))=0
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  Simplification of level 1:  variance and terms E(ε*Di ε)=0      */
+simplifyLevel1:[E(ε**2)=1]$
+for xi in coords do(
+expr:[  E(ε*diff(ε,xi))=0 ],
+simplifyLevel1:append(simplifyLevel1,expr)
+)$
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel1[1]; 
+simplifyLevel1[2];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 2: Expression of the metric
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: comment start ]
+Inclus les règles:
+(a)     E(ε*diff(ε,xi,1,xj,1))   = -g[xi,xj]
+(b)     E(diff(ε,xi)*diff(ε,xj)) =  g[xi,xj]
+   [wxMaxima: comment end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel2:[]$
+for xi in coords do 
+(
+    for xj in coords do 
+    (
+        expr:[ 
+            E( ε*diff(ε,xi,1,xj,1) )=-g[xi,xj], 
+            E( diff(ε,xi)*diff(ε,xj) )=g[xi,xj]
+        ],
+        simplifyLevel2:append(simplifyLevel2, expr)
+    )
+)$
+
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel2[1]; 
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 3: Gamma[i,j,k]
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+Gamma(i,j,k):=1/2*(
+    diff( g[k,j],i )+diff( g[i,k], j )-diff( g[i,j],k ) 
+    );
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel3:[]$
+for xi in coords do
+(
+    for xj in coords do
+    (
+            for xk in coords do
+            (
+                expr: [ E(diff(ε,xi,1,xj,1)*diff(ε,xk)) = 
+                    Gamma(xi,xj,xk) ],
+                simplifyLevel3:append(simplifyLevel3,expr)
+ 
+            )
+    )
+)$ 
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel3[2];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 4: Terms in Skewness
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+S(i,j,k):=-1/6*(diff(g[i,j], k) +Gamma(i,j,k) );
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel4:[]$
+for xi in coords do
+(
+    for xj in coords do
+    (
+            for xk in coords do
+            (
+                for xl in coords do
+                (
+                expr: [ E(diff(ε,xi)*diff(ε,xj,1,xk,1,xl,1)) = 
+                    6*diff(S(xj,xk,xl),xi) - 24*K[xi,xj,xk,xl] ],
+                simplifyLevel4:append(simplifyLevel4,expr)
+                )
+            )
+    )
+)$
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel4[1];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 5: Terms in Kurtosis
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+K(i,j,k,l):=1/24*E( diff(ε,i,1,j,1)*diff(ε,k,1,l,1) )   -1/24*(
+    diff(g[k,l],i,1,j,1) + 
+    diff(Gamma(k,l,j), i) + diff(Gamma(k,l,i), j) );
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel5:[]$ 
+for xi in coords do
+(
+    for xj in coords do
+    (
+            for xk in coords do
+            (
+                for xl in coords do
+                (
+                expr: [ K[xi,xj,xk,xl]=K(xi,xj,xk,xl) ],
+                simplifyLevel5:append(simplifyLevel5,expr)
+                )
+            )
+    )
+)$
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel5[1];
+simplifyLevel5[10];
+
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Level 6: Terms with Gaussian closure
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+K_gauss(i,j,k,l):= 1/8*g[i,k]*g[i,l]*kron_delta(i,l)*kron_delta(j,k);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel6:[]$ 
+for xi in coords do
+(
+    for xj in coords do
+    (
+            for xk in coords do
+            (
+                for xl in coords do
+                (
+                expr: [ E( diff(ε,xi,1,xj,1)*diff(ε,xk,1,xl,1) )=24*K_gauss(xi,xj,xk,xl) ],
+                simplifyLevel6:append(simplifyLevel6,expr)
+                )
+            )
+    )
+)$ 
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+simplifyLevel6[16];
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: section start ]
+Application to the diffusion operator
+   [wxMaxima: section end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Description of the dynamics for the errors (e -- not normalized)
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: comment start ]
+The dynamics of the error e=σε is first introduced, where :
+- ε normalized error,
+- σ standard deviation.
+   [wxMaxima: comment end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  diffusion */
+dyne: 'diff(e,t)= κ*diff(e,x,2)$
+box(dyne);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Description of the dynamics for the variance and the standard deviation
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Dynamics of the variance
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dynv: diff(V,t)='E(diff(e**2,t));
+dynv: lhs(dynv)=subst(diff(e,t)=rhs(dyne),rhs(dynv));
+dynV: subst(e=ε*V**(1/2),dynv)$
+dynV: lhs(dynV)=E( expand(ev(args(rhs(dynV))[1],diff)) );
+/*  Additional simplifications */
+dynV:subst(simplifyLevel1,dynV);
+/*  Simplification with the metric */
+dynV_g:subst(simplifyLevel2,dynV)$
+box(dynV_g);
+
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Dynamics of the standard deviation
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  Dynamique de l'écart-type   */
+subst([e=ε*σ,V=σ**2],dynV_g);
+ev(%,diff,expand);
+/*lhs(%) = E(args(rhs(%))[1])$*/
+dyns_g:solve(%,diff(σ,t))[1]$
+box(dyns_g);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Dynamics of the metric
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Definition
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  Definition of the metric */
+dyng:'diff( g[x,x] ,t) ='E( 'diff(  'diff(e/σ,x)*'diff(e/σ,x)  ,t) );
+ev(%,diff)$
+expand(%)$
+fullratsimp(%)$
+dyng_simp1:subst(diff(e,t)=rhs(dyne),%);
+
+/*dyng:lhs(dyng_xy)=E( ev(arg(rhs(dyng_xy))))*/
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ /*  Remplacement des dérivées 'x,t) à l'aide des tendances */
+subst(diff(e,x,1,t,1)=diff(rhs(dyne),x),dyng_simp1)$
+subst(diff(σ,x,1,t,1)=diff(rhs(dyns),x),%)$
+subst(diff(σ,t)=rhs(dyns),%)$
+expand(%)$
+/*  Remplace the error -e- by the normalized error -ε- */
+subst(e=ε*σ,%)$
+dyng:ev(%,diff,expand)$
+/*  Simplification from evaluation of the expectation    */
+dyng:lhs(dyng)=E(args(rhs(dyng))[1])$
+dyng:expand(%)$
+dyng1:subst(simplifyLevel1,dyng)$
+dyng2:subst(simplifyLevel2,dyng1);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Closure for Gamma and the skewness, introduction of the kurtosis
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dyng3:subst(simplifyLevel3,dyng2);
+dyng4:subst(simplifyLevel4,dyng3);
+expand(%);
+
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Simplification of the Kurtosis
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dyng5:subst(simplifyLevel5,dyng4)$
+dyng5:expand(dyng5);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Gaussian closure
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dyng6:subst(simplifyLevel6,dyng5);
+dyng_s:dyng6;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*  Formulation of dyngs1 in terms of variance  */
+subst(σ=sqrt(V),dyng6)$
+dyng_v:ev(%,diff,expand)$
+box(dyng_v);
+
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ /* Formulation in local diffusion tensor */
+expand(subst(g[x,x]=1/(2*ν),dyng_v));
+expand(ev(%,diff));
+dyn_nu:expand(-2*ν**2 * %);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+ /* Validation in 1D    */
+subst([j=i,k=i,l=i],dyng_v);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsect start ]
+Dynamics for the Burgers' equation (diffusion part only)
+   [wxMaxima: subsect end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Variance/metric
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dynV_g;
+dyng_v;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Variance/diffusion
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*Variance - diffusion */
+subst(g[x,x]=1/(2*ν),dynV_g);
+subst(g[x,x]=1/(2*ν),dyng_v)$
+ev(%,diff)$
+expand(-2*ν**2*%);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Standard-deviation / metric
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+dyns_g;
+dyng_s;
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: subsubsect start ]
+Standard-deviation / diffusion
+   [wxMaxima: subsubsect end   ] */
+
+
+/* [wxMaxima: input   start ] */
+/*Standard deviation - diffusion */
+subst(g[x,x]=1/(2*ν),dyns_g);
+subst(g[x,x]=1/(2*ν),dyng_s)$
+ev(%,diff)$
+expand(-2*ν**2*%);
+/* [wxMaxima: input   end   ] */
+
+
+
+/* Old versions of Maxima abort on loading files that end in a comment. */
+"Created with wxMaxima 19.07.0"$
